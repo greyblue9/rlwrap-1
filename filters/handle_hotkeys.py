@@ -43,8 +43,7 @@ def hotkey(key, *other_params): # key = e.g.  "<CTRL-Y>"
     if ukey not in keymap:
         return (key, *other_params) # a filter further downstream may want to handle this hotkey
     handler = keymap[ukey]
-    result = handler(0, *other_params)
-    return result
+    return handler(0, *other_params)
 
 
 ############################# A few handlers ###############################################
@@ -88,7 +87,7 @@ def edit_history(doc, prefix, postfix, history, histpos):
         editor = "vi +%L"
     editor = editor.replace('%L', str(lineno))
     editor = editor.replace('%C', str(colno))
-    os.system(editor + ' ' + editfilename)
+    os.system(f'{editor} {editfilename}')
     editfile.seek(0,0)
     lines = map(lambda l: l.decode(sys.stdin.encoding), editfile.readlines())
     new_history = []
@@ -100,16 +99,16 @@ def edit_history(doc, prefix, postfix, history, histpos):
         line = line.replace('\t', '')
         line = line.lstrip()
         line = line.rstrip()
-        if not line == '':
+        if line != '':
             if (empty_counter > 0):
                 # remember position of last line after an empty line,
                 # and the number of empty lines:
                 (last_counter, last_empty_counter) = (counter, empty_counter)
             empty_counter = 0;
-            counter = counter + 1 # We count 0-based, so increment only now
+            counter += 1
             new_history.append(line)
         else:
-            empty_counter = empty_counter + 1
+            empty_counter += 1
     if last_empty_counter > 0:
         histpos = str(last_counter)
         prefix = new_history[last_counter]
@@ -122,11 +121,11 @@ def edit_history(doc, prefix, postfix, history, histpos):
 def split_off_last_word(string):
     '''split_off_last_word("In the gener") = ("In the ", "gener") '''
     break_chars = os.environ['RLWRAP_BREAK_CHARS'] if 'RLWRAP_BREAK_CHARS' in os.environ else " \t\n" # old rlwrap with newer filter - use a sensible default
-    break_chars =  re.sub(r'([\[\]])', r'\\1', break_chars)      
+    break_chars =  re.sub(r'([\[\]])', r'\\1', break_chars)
     break_chars = break_chars or ' ' # prevent python from choking on a bad regex '[]' in the next line
     words       = re.split('[{}]'.format(break_chars), string)
     last_word  = words[-1]
-    return (string[0:len(string)-len(last_word)], last_word)
+    return string[:len(string)-len(last_word)], last_word
 
 
 def fuzzy_filter_history(doc, prefix, postfix, history, histpos, command):
@@ -174,15 +173,14 @@ def document_all_hotkeys():
     dontcare = (None, None, None, None) # dummy arguments for getting the docstring
     for k in 'abcdefghijklmnopqrstuvwxyz':
         try:
-            handler = keymap[k]
-            if (handler):
+            if handler := keymap[k]:
                 doclist = doclist + "CTRL+{0}:   ".format(k) + handler(1, *dontcare) + "\n"
         except:
-            
+
             pass
     inputrc = "{0}/.inputrc".format(os.environ['HOME'])
-    doclist = doclist + "Currently bound hotkeys in .inputrc:\n"
-    doclist = doclist + safe_backtick(["grep", "rlwrap-hotkey", inputrc])
+    doclist += "Currently bound hotkeys in .inputrc:\n"
+    doclist += safe_backtick(["grep", "rlwrap-hotkey", inputrc])
     return doclist
 
 

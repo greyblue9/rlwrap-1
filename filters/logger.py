@@ -7,6 +7,7 @@ Usage:
 rlwrap -z './logger.py -l logger.log' telnet
 """
 
+
 import os
 import sys
 
@@ -23,9 +24,14 @@ filter = rlwrapfilter.RlwrapFilter()
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--logfile', '-l', nargs='?',
-                    type=argparse.FileType('a'),
-                    default=open("/tmp/filterlog." + str(os.getpid()), mode='a'))
+parser.add_argument(
+    '--logfile',
+    '-l',
+    nargs='?',
+    type=argparse.FileType('a'),
+    default=open(f"/tmp/filterlog.{str(os.getpid())}", mode='a'),
+)
+
 args = parser.parse_args()
 fd = args.logfile
 
