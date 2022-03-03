@@ -93,15 +93,14 @@ def when_defined(maybe_ref_to_sub, *args):
     """
 `    when_defined(f, x, y, ...) returns f(x, y, ...) if f is defined, x otherwise
     """
-    if (maybe_ref_to_sub is not None):
-        try:
-            return maybe_ref_to_sub(*args)
-        except Exception as e:
-            send_error(
-                "improper handler <{0}> of type {1} (expected a ref to a sub)\n{2}"
-                .format(maybe_ref_to_sub, type(maybe_ref_to_sub), traceback.format_exc()),e)
-    else:
+    if maybe_ref_to_sub is None:
         return args[0]
+    try:
+        return maybe_ref_to_sub(*args)
+    except Exception as e:
+        send_error(
+            "improper handler <{0}> of type {1} (expected a ref to a sub)\n{2}"
+            .format(maybe_ref_to_sub, type(maybe_ref_to_sub), traceback.format_exc()),e)
 
 
 def out_of_band(tag):
@@ -114,13 +113,13 @@ def read_until(fh, stoptext, timeout,
     read chunks from pty pointed to by fh until either inactive for timeout or stoptext is seen at end-of-chunk
     """
     res = ''
-    while (True):
+    while True:
         chunk = read_chunk(fh, timeout);
         if(not chunk):
             # got "" back: timeout
             #send_warn("read_until: timeout")
             return res
-        res = res + chunk
+        res += chunk
         # multi-line mode so that "^" matches a head of each line
         slice = res[prompt_search_from:prompt_search_to]
         if re.search(stoptext, slice, re.MULTILINE):
@@ -158,12 +157,12 @@ def write_patiently(fh, buffer):
     """
     already_written = 0
     count = len(buffer)
-    while(already_written < count):
+    while (already_written < count):
         try:
             nwritten = os.write(fh, buffer[already_written:])
             if (nwritten <= 0):
                 send_error("error writing: {0}".format(str(buffer)))
-            already_written = already_written + nwritten
+            already_written += nwritten
         except BrokenPipeError: # quit when rlwrap dies
             sys.exit(1)
 
@@ -262,10 +261,9 @@ def send_error(message,e = None):
     """
     write_message(TAG_OUTPUT_OUT_OF_BAND if e else TAG_ERROR, "{0}: {1}".format(__name__, message))
     if e:
-       raise e
-    else:
-       time.sleep(2) # timeout doesn't matter much because rlwrap will kill us anyway
-       exit()
+        raise e
+    time.sleep(2) # timeout doesn't matter much because rlwrap will kill us anyway
+    exit()
 
 def intercept_error(func):
     """
@@ -297,7 +295,12 @@ def intercept_error_with_message(message=None):
             try:
                 return func(*args, **kwargs)
             except Exception as e:
-                complete_message = "{0}: {1}".format(__name__, '/'.join(map(str,e.args))) if message == None else "{0}\n{1}".format(message, e)
+                complete_message = (
+                    "{0}: {1}".format(__name__, '/'.join(map(str, e.args)))
+                    if message is None
+                    else "{0}\n{1}".format(message, e)
+                )
+
                 write_message(TAG_ERROR, complete_message)
                 if message:
                     exit()
@@ -307,23 +310,23 @@ def intercept_error_with_message(message=None):
     return intercept_error_closure
 
 def is_string(value):
-    return isinstance(value, str) or value == None
+    return isinstance(value, str) or value is None
 
 
 def is_boolean(value):
-    return isinstance(value, bool) or value == None
+    return isinstance(value, bool) or value is None
 
 
 def is_integer(value):
-    return isinstance(value, int) or value == None
+    return isinstance(value, int) or value is None
 
 
 def is_float(value):
-    return isinstance(value, numbers.Number) or value == None
+    return isinstance(value, numbers.Number) or value is None
 
 
 def is_callable(value):
-    return isinstance(value, collections.Callable) or value == None
+    return isinstance(value, collections.Callable) or value is None
 
 
 @intercept_error
@@ -338,7 +341,7 @@ def split_rlwrap_message(message):
     bmessage = bytes(message, sys.stdin.encoding)
     fields = []
 
-    while(len(bmessage) != 0):
+    while bmessage:
         blen = bmessage[:DIGIT_NUMBER]
         bmessage = bmessage[DIGIT_NUMBER:]
         length = int(str(blen, sys.stdin.encoding), base=16)
@@ -353,7 +356,7 @@ def merge_fields(fields):
 
     for field in fields:
         length = len(bytes(field, sys.stdin.encoding))
-        lenstr = format(length, '0' + str(DIGIT_NUMBER) + 'x')
+        lenstr = format(length, f'0{str(DIGIT_NUMBER)}x')
         message = message + lenstr + field
     return message
 
@@ -372,7 +375,7 @@ class RlwrapFilter:
     """
 
     def __setattr__(self, name, value):
-        if not name in self._fields:
+        if name not in self._fields:
             self.warn("There is no '{0}' attribute in class {1}\n".format(name, self.__class__.__name__))
 
         is_valid_type = self._field_types[name]
@@ -505,8 +508,7 @@ class RlwrapFilter:
         time.sleep(1)
         rlwrap_filter.vacuum_stale_message(prompt, timeout)
         """
-        response = read_until(CMD_OUT, prompt, timeout)
-        return response
+        return read_until(CMD_OUT, prompt, timeout)
 
 
     def add_interests(self, message):
@@ -519,7 +521,7 @@ class RlwrapFilter:
                        TAG_HOTKEY      : self.hotkey_handler,
                        TAG_SIGNAL      : self.signal_handler}
 
-        for tag in range(0, len(message)):
+        for tag in range(len(message)):
             if interested[tag] == 'y':
                 continue   # a preceding filter in the pipeline has already shown interest
             if tag2handler[tag] is not None:

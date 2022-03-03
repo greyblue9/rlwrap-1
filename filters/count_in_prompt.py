@@ -24,11 +24,10 @@ filter = rlwrapfilter.RlwrapFilter()
 def munge_prompt(prompt):
     global N
 
-    if (prompt and filter.previous_tag == rlwrapfilter.TAG_OUTPUT):
-        N = N + 1
-        return "prompt {0} > ".format(N)
-    else:
+    if not prompt or filter.previous_tag != rlwrapfilter.TAG_OUTPUT:
         return prompt
+    N = N + 1
+    return "prompt {0} > ".format(N)
 
 filter.help_text = '\n'.join(
     ["Usage: rlwrap -z {0} <command>".format(__file__),

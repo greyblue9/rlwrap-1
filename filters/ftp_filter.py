@@ -38,12 +38,12 @@ import re
 
 ############################ subroutines ####################################
 
-def listing (dir, where, what):
-    dir = '.' if dir == None else dir
+def listing(dir, where, what):
+    dir = '.' if dir is None else dir
 
     command = '!ls -la {0}|cat'.format(dir) if where == 'local' else 'ls -la'
     lines = re.split(r'\r?\n', filter.cloak_and_dagger(command, ftp_prompt, 2))
-    if dir_filename_column[where] == None: # find out which column of listing has the filename
+    if dir_filename_column[where] is None: # find out which column of listing has the filename
         dotdotline = [l for l in lines if re.search(r'(^|\s+)\.\.(\s|$)', l)][0]; # .. should always be there 
         fields = re.split(r'\s+', dotdotline)
         try:
@@ -54,8 +54,7 @@ def listing (dir, where, what):
 
     pattern = "^d" if what == "directories" else "^-"
     lines = [l for l in lines if re.search(pattern, l)] # makes only sense if there is a column with drwxr-xr-x
-    results = [re.split('\s+', l)[dir_filename_column[where]] for l in lines]
-    return results
+    return [re.split('\s+', l)[dir_filename_column[where]] for l in lines]
 
 
 def pwd(where):
@@ -63,20 +62,18 @@ def pwd(where):
     result = filter.cloak_and_dagger(command, ftp_prompt, 1)
     pattern = "(.*?)\r?\n" if where == "local" else '"(.*?)"'
     m = re.search(pattern, result)
-    pwd = m.group(1)
-    return pwd
+    return m.group(1)
 
 
 def prompt_handler(prompt):
-    if prompt == ftp_prompt:
-        if len(ftp_commands) == 0:
-            ftp_commands.extend(commands())
-    else:
+    if prompt != ftp_prompt:
         return prompt
+    if len(ftp_commands) == 0:
+        ftp_commands.extend(commands())
     local = pwd('local')
     remote = pwd('remote')
     local = local.replace(os.environ['HOME'], '~')
-    rtext = '(remote: ' + remote + ')' if remote else '(not connected)'
+    rtext = f'(remote: {remote})' if remote else '(not connected)'
     return '{0} {1}> '.format(local,rtext)
 
 
@@ -92,13 +89,12 @@ def commands():
     help_text = filter.cloak_and_dagger("help", ftp_prompt, 0.5)
     lines = help_text.split('\n')
     del lines[0:2] # remove the first 2 lines
-    commands = [command for command in re.split(r'\s+', ''.join(lines))]
-    return commands
+    return list(re.split(r'\s+', ''.join(lines)))
 
 def complete_handler(line, prefix, completions):
 
     nwords = len(re.split('\s+', line))
-    if prefix == None:
+    if prefix is None:
         nwords += 1 # TAB at start of a new (empty) argument
 
     if nwords <= 1:
@@ -110,7 +106,7 @@ def complete_handler(line, prefix, completions):
     dir = prefix_match.group(2)
     name_prefix = prefix_match.group(3)
     #dir = '.' if dir == None else dir
-    dir = '' if dir == None else dir
+    dir = '' if dir is None else dir
     narg = nwords-2
     try:
         completion_types[command][narg*2]
@@ -139,13 +135,13 @@ if __name__ == '__main__':
         'get' : ['remote','files','local','directories'],
         'put' : ['local', 'files','remote','directories']
     }
-    
-    
+
+
     filter = rlwrapfilter.RlwrapFilter()
     dir_filename_column = {'local':None, 'remote':None}
     #dir_filename_column['local'] = None
     #dir_filename_column['remote'] = None
-    
+
     filter.help_text = '\n'.join([
         "usage: rlwrap -c [-aword:] -z ftp_filter.py ftp (-e) [hostname]",
         "run plain Netkit ftp with completion for commands, local and remote files",
@@ -153,9 +149,11 @@ if __name__ == '__main__':
     filter.prompt_handler = prompt_handler
     filter.completion_handler = complete_handler
     filter.cloak_and_dagger_verbose = False # set to True to spy on cloak_and_dagger dialogue
-    
-    
-    if (not 'RLWRAP_COMMAND_PID' in os.environ) or re.match(r'^ftp', os.environ['RLWRAP_COMMAND_LINE']):
+
+
+    if 'RLWRAP_COMMAND_PID' not in os.environ or re.match(
+        r'^ftp', os.environ['RLWRAP_COMMAND_LINE']
+    ):
         raise SystemExit("This filter works only with plain vanilla ftp\n")
 
     filter.run()

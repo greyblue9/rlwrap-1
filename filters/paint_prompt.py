@@ -69,10 +69,10 @@ def ramp(val1, val2, frac):
 
 
 def intermediate_color(frac):
-    r1 = int(colour1[0:2], 16)
+    r1 = int(colour1[:2], 16)
     g1 = int(colour1[2:4], 16)
     b1 = int(colour1[4:6], 16)
-    r2 = int(colour2[0:2], 16)
+    r2 = int(colour2[:2], 16)
     g2 = int(colour2[2:4], 16)
     b2 = int(colour2[4:6], 16)
     r = ramp(r1, r2, frac)
@@ -83,19 +83,18 @@ def intermediate_color(frac):
 
 
 def apply_ramp(text):
-    buf = []
+    buf = [
+        ''.join(
+            [
+                "\x01\x1b[38;5;{0}m\x02".format(
+                    rgb2xterm[intermediate_color(i / len(text))]
+                ),
+                c,
+            ]
+        )
+        for i, c in enumerate(text)
+    ]
 
-    # text -> ['t', 'e', 'x', 't']
-    i = 0
-    for c in text:
-        # ESC[38;5;$colour is the xterm code to swithc to $colour, the \x01 and \x02 are
-        # readline "ignore codes" to tell readline that the sequence is unprintable 
-        buf.append(
-            ''.join([
-                "\x01\x1b[38;5;{0}m\x02".format(rgb2xterm[intermediate_color(i/len(text))]),
-                c
-            ]))
-        i += 1
 
     return ''.join(buf) + "\x01\x1b[0m\x02"
 

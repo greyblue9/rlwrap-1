@@ -42,14 +42,12 @@ def input(message):
 
 def output(message):
     global out_chunkno
-    if (pipeline):
-        if (out_chunkno == 0):
-            out_chunkno += 1
-            return wait_text
-        else:
-            return ""
-    else:
+    if not pipeline:
         return message # replace first chunk by $wait_text
+    if out_chunkno != 0:
+        return ""
+    out_chunkno += 1
+    return wait_text
 
 
 def prompt_handler(message):

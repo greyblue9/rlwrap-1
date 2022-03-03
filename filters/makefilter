@@ -48,9 +48,13 @@ filter_command = None
 command_has_spoken = False
 
 def handle_child_death(signum, frame):
-    advice =  (f"\nConsider using 'makefilter --stick-around ...'  to see more error messages"
-                if not args.stick_around and not command_has_spoken else "")
-    filter.error(f"{args.command_line[0]} has died." + advice)            
+    advice = (
+        "\\nConsider using 'makefilter --stick-around ...'  to see more error messages"
+        if not args.stick_around and not command_has_spoken
+        else ""
+    )
+
+    filter.error(f"{args.command_line[0]} has died.{advice}")            
         
 signal.signal(signal.SIGCHLD, handle_child_death)
 
@@ -107,22 +111,22 @@ def pass_single_line_through_filter_command(line, strip=True):
 assembled_chunks = ""
 
 def pass_chunks_through_filter_command_line_by_line(chunk):
-   """
+    """
    pass chunk through filter_command, assembling and spliting multiple chunks into lines if needed 
    use global variable <assembled_chunks> to retain assembled chunks between invocation
    this should probably be done in rlwrapfilter eventually: filter.present_output_as_lines = True/False 
    """
-   global assembled_chunks
-   assembled_chunks += chunk 
-   # chunk may contain zero, one or several CRNLs:
-   lines   = assembled_chunks.split('\r\n');
-   # keep last (possibly empty) non CRNL-terminated chunk, which may turn out to have been 
-   # a prompt, in which case erase_assembled_chunks() will be called to forget about it, cf. below:
-   assembled_chunks  = lines[-1] 
-   output  = ""
-   for line in lines[0:-1] :
-      output += pass_single_line_through_filter_command(line, False)
-   return output
+    global assembled_chunks
+    assembled_chunks += chunk
+    # chunk may contain zero, one or several CRNLs:
+    lines   = assembled_chunks.split('\r\n');
+    # keep last (possibly empty) non CRNL-terminated chunk, which may turn out to have been 
+    # a prompt, in which case erase_assembled_chunks() will be called to forget about it, cf. below:
+    assembled_chunks  = lines[-1]
+    return "".join(
+        pass_single_line_through_filter_command(line, False)
+        for line in lines[:-1]
+    )
  
 
 def erase_assembled_chunks(prompt):
@@ -137,19 +141,19 @@ def erase_assembled_chunks(prompt):
 
 
 ############ determine which handler to actitvate ####################
-if  args.message_type == 'output':
-    filter.output_handler = pass_chunks_through_filter_command_line_by_line
-    filter.prompt_handler = erase_assembled_chunks 
-elif args.message_type == 'input':
-    filter.input_handler = pass_single_line_through_filter_command
-elif args.message_type == 'prompt':
-    filter.prompt_handler = pass_single_line_through_filter_command
-elif args.message_type == 'echo':
+if args.message_type == 'echo':
     filter.echo_handler = pass_single_line_through_filter_command
 elif args.message_type == 'history':
     filter.history_handler = pass_single_line_through_filter_command
 
 
+elif args.message_type == 'input':
+    filter.input_handler = pass_single_line_through_filter_command
+elif args.message_type == 'output':
+    filter.output_handler = pass_chunks_through_filter_command_line_by_line
+    filter.prompt_handler = erase_assembled_chunks
+elif args.message_type == 'prompt':
+    filter.prompt_handler = pass_single_line_through_filter_command
 ########### main loop: ###################
 
 filter.run()
